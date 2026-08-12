@@ -1,0 +1,1 @@
+enum CameraMode { live, playback }
