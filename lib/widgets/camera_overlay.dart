@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../enums/camera_id.dart';
 import '../enums/camera_state.dart';
 import '../models/camera_status.dart';
 import '../services/camera_session.dart';
 import '../services/camera_manager.dart';
+import '../services/recording_manager.dart';
 
 class CameraOverlay extends StatelessWidget {
   const CameraOverlay({super.key, required this.session});
@@ -55,10 +57,13 @@ class CameraOverlay extends StatelessWidget {
   }
 
   Widget _buildRecBadge() {
-    return ValueListenableBuilder(
-      valueListenable: session.recording.isRecording,
-      builder: (_, recording, _) {
-        if (!recording) return SizedBox();
+    final recManager = RecordingManager.instance;
+    return ValueListenableBuilder<Map<CameraId, bool>>(
+      valueListenable: recManager.isRecording,
+      builder: (_, recordingMap, _) {
+        final isThisRecording = recordingMap[session.config.id] ?? false;
+
+        if (!isThisRecording) return SizedBox();
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

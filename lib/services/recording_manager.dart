@@ -1,158 +1,158 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/camera_config.dart';
 import '../utils/utils.dart';
 import '../enums/camera_id.dart';
-import 'package:media_kit/media_kit.dart';
-import 'settings_manager.dart';
+import 'camera_manager.dart';
 
 class RecordingManager {
-  RecordingManager({required CameraConfig config, required NativePlayer player})
-    : _config = config,
-      _player = player;
+  static final RecordingManager instance = RecordingManager._internal();
+  RecordingManager._internal();
 
-  CameraConfig _config;
-  // ignore: unused_field
-  final NativePlayer _player;
+  final ValueNotifier<Map<CameraId, bool>> isRecording =
+      ValueNotifier<Map<CameraId, bool>>({});
+  final ValueNotifier<Map<CameraId, DateTime>> startTimes =
+      ValueNotifier<Map<CameraId, DateTime>>({});
+  final Map<CameraId, Process?> processes = {};
+  final Map<CameraId, bool> _userWantsRecording = {};
 
-  Process? _process;
-  final Map<CameraId, Process?> _processes = {};
+  DateTime? getStartTime(CameraId id) => startTimes.value[id];
+  bool? getUserWants(CameraId id) => _userWantsRecording[id];
+  final Set<CameraId> _startingCameras = {};
+  final Map<CameraId, int> _fileIndexes = {};
 
-  // Melacak apakah proses stop dilakukan secara manual oleh user
-  bool _isManualStopping = false;
-
-  final ValueNotifier<bool> isRecording = ValueNotifier(false);
-
-  void updateConfig(CameraConfig config) {
-    _config = config;
-  }
-
-  // --- MODE SINGLE (Opsional jika masih dipakai) ---
-  Future<void> start() async {
-    if (isRecording.value) return;
-    // (Gunakan logika start single yang sudah ada sebelumnya jika diperlukan)
-  }
-
-  Future<void> stop() async {
-    // (Gunakan logika stop single yang sudah ada sebelumnya jika diperlukan)
-  }
-
-  // --- MODE ALL DENGAN AUTO-RECONNECT ---
-  Future<void> startAll() async {
-    if (isRecording.value) return;
-
-    _isManualStopping = false;
-    isRecording.value = true;
-
-    final cameras = SettingsManager.instance.cameras.value;
-    for (var cam in cameras) {
-      if (cam.rtspUrl.trim().isEmpty) continue;
-      _startCameraRecording(cam);
+  void startCamera(CameraConfig config, {bool byUser = true}) async {
+    if (processes.containsKey(config.id) ||
+        _startingCameras.contains(config.id)) {
+      debugPrint("Camera ${config.id} is already recording/processing.");
+      return;
     }
-  }
 
-  // Fungsi privat untuk menjalankan rekam per kamera sekaligus memasang pengawas (watchdog)
-  void _startCameraRecording(CameraConfig cam) async {
-    // Jika user sudah menekan stop secara manual, batalkan
-    if (!isRecording.value || _isManualStopping) return;
+    if (byUser && (isRecording.value[config.id] ?? false)) return;
+    if (!byUser && (_userWantsRecording[config.id] != true)) return;
+    if (config.rtspUrl.trim().isEmpty) return;
 
-    final cameraNameStr = _getNameForCameraId(cam.id);
-    // Tambahkan timestamp atau indeks unik agar nama file tidak bentrok jika re-connect berkali-kali
-    final outputPath = await Utils.generateVideoPath("${cameraNameStr}_rec");
+    _startingCameras.add(config.id);
+
+    if (byUser) {
+      _userWantsRecording[config.id] = true;
+      _fileIndexes[config.id] = 1;
+    } else {
+      _fileIndexes[config.id] = (_fileIndexes[config.id] ?? 0) + 1;
+    }
+
+    final cameraNameStr = _getNameForCameraId(config.id);
+    final outputPath = await Utils.generateVideoPath(
+      (_fileIndexes[config.id] ?? 1) < 2
+          ? cameraNameStr
+          : "$cameraNameStr${_fileIndexes[config.id]}",
+    );
 
     try {
-      debugPrint("Starting recording for $cameraNameStr...");
+      if (_userWantsRecording[config.id] == false && !byUser) {
+        _startingCameras.remove(config.id);
+        return;
+      }
+      debugPrint("Start record $cameraNameStr -> $outputPath");
+
       final process = await Process.start(Utils.ffmpegPath, [
         "-y",
-        "-nostats",
-        "-loglevel",
-        "error",
+        "-fflags",
+        "nobuffer",
+        "-flags",
+        "low_delay",
         "-rtsp_transport",
         "tcp",
         "-i",
-        cam.rtspUrl,
+        config.rtspUrl,
         "-c",
         "copy",
-        "-tag:v",
-        "hvc1",
+        "-an",
+        "-threads",
+        "1",
         outputPath,
       ]);
 
-      _processes[cam.id] = process;
+      processes[config.id] = process;
+      _startingCameras.remove(config.id);
 
-      // Pantau kapan proses ini berhenti
+      final newRecordingMap = Map<CameraId, bool>.from(isRecording.value);
+      newRecordingMap[config.id] = true;
+      isRecording.value = newRecordingMap;
+
+      final newTimesMap = Map<CameraId, DateTime>.from(startTimes.value);
+      newTimesMap[config.id] = DateTime.now();
+      startTimes.value = newTimesMap;
+
+      process.stderr.transform(systemEncoding.decoder).listen((data) {
+        // debugPrint("FFmpeg [$cameraNameStr]: $data");
+      });
+
       process.exitCode.then((code) {
-        debugPrint("FFmpeg exited for $cameraNameStr with code: $code");
+        debugPrint(
+          "FFmpeg recorder exited for $cameraNameStr with code: $code",
+        );
+        processes.remove(config.id);
+        startTimes.value.remove(config.id);
+        _startingCameras.remove(config.id);
 
-        // Hapus dari map aktif
-        if (_processes[cam.id] == process) {
-          _processes.remove(cam.id);
-        }
-
-        // JIKA MATI BUKAN KARENA MANUAL STOP DAN STATUS RECORDING MASIH AKTIF -> AUTO RECONNECT
-        if (!_isManualStopping && isRecording.value) {
-          debugPrint(
-            "Camera $cameraNameStr disconnected! Attempting to reconnect recording in 3 seconds...",
-          );
-
-          Future.delayed(const Duration(seconds: 3), () {
-            // Cek sekali lagi apakah status masih merekam sebelum mencoba ulang
-            if (isRecording.value && !_isManualStopping) {
-              _startCameraRecording(cam);
-            }
-          });
-        }
+        isRecording.value[config.id] = false;
       });
     } catch (e) {
-      debugPrint("Failed to start recording for $cameraNameStr: $e");
-      _processes[cam.id] = null;
-
-      // Coba lagi jika gagal di awal dan belum di-stop manual
-      if (!_isManualStopping && isRecording.value) {
-        Future.delayed(const Duration(seconds: 3), () {
-          if (isRecording.value && !_isManualStopping) {
-            _startCameraRecording(cam);
-          }
-        });
-      }
+      debugPrint("Failed to start FFmpeg recorder for $cameraNameStr: $e");
+      isRecording.value[config.id] = false;
+      _startingCameras.remove(config.id);
+      processes[config.id] = null;
     }
   }
 
-  Future<void> stopAll() async {
-    if (!isRecording.value) return;
+  void stopCamera(CameraConfig config, {bool byUser = true}) {
+    if (byUser) {
+      _userWantsRecording[config.id] = false;
+    }
 
-    // Tandai bahwa ini adalah penghentian manual oleh user
-    _isManualStopping = true;
-    isRecording.value = false;
+    final process = processes.remove(config.id);
+    if (process == null) return;
+
+    // processes.remove(config.id);
+
+    final newRecordingMap = Map<CameraId, bool>.from(isRecording.value);
+    newRecordingMap[config.id] = false;
+    isRecording.value = newRecordingMap;
+
+    final newTimesMap = Map<CameraId, DateTime>.from(startTimes.value);
+    newTimesMap.remove(config.id);
+    startTimes.value = newTimesMap;
 
     try {
-      debugPrint("Stopping all individual camera recordings manually...");
-      final keys = _processes.keys.toList();
-      for (var key in keys) {
-        final process = _processes[key];
-        if (process != null) {
-          try {
-            process.stdin.write('q');
-            await process.stdin.flush();
-            await process.exitCode.timeout(
-              const Duration(seconds: 4),
-              onTimeout: () {
-                process.kill();
-                return -1;
-              },
-            );
-          } catch (_) {}
-        }
-      }
-    } finally {
-      _processes.clear();
-      debugPrint("All recordings successfully stopped.");
+      process.stdin.writeln('q');
+      Future.delayed(const Duration(seconds: 2), () {
+        try {
+          process.kill(ProcessSignal.sigterm);
+          debugPrint(
+            "FFmpeg for ${_getNameForCameraId(config.id)} closed gracefully.",
+          );
+        } catch (_) {}
+      });
+    } catch (e) {
+      process.kill();
     }
   }
 
-  Future<void> dispose() async {
-    await stopAll();
-    isRecording.dispose();
+  void startAllCamera() async {
+    for (final id in CameraId.values) {
+      final session = CameraManager.instance.get(id);
+      startCamera(session.config);
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+  }
+
+  void stopAllCamera() async {
+    for (final id in CameraId.values) {
+      final session = CameraManager.instance.get(id);
+      stopCamera(session.config);
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
   }
 
   String _getNameForCameraId(CameraId id) {

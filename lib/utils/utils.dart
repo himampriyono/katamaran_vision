@@ -21,17 +21,15 @@ class Utils {
   static String generatetimeStamp() {
     final now = DateTime.now();
 
-    return "${now.year}"
+    return "${now.year.toString().padLeft(2, '0')}"
         "${now.month.toString().padLeft(2, '0')}"
-        "${now.day.toString().padLeft(2, '0')}_"
         "${now.day.toString().padLeft(2, '0')}"
         "${now.hour.toString().padLeft(2, '0')}"
-        "${now.minute.toString().padLeft(2, '0')}"
-        "${now.second.toString().padLeft(2, '0')}";
+        "${now.minute.toString().padLeft(2, '0')}";
   }
 
   static String generateVideoFilename(String prefix) {
-    return "${prefix}_${generatetimeStamp()}.ts";
+    return "${generatetimeStamp()}_$prefix.ts";
   }
 
   static String get ffmpegPath {
