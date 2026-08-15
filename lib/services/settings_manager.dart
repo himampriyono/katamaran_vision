@@ -14,10 +14,17 @@ class SettingsManager {
   final ValueNotifier<List<CameraConfig>> cameras =
       ValueNotifier<List<CameraConfig>>([]);
 
+  final ValueNotifier<String> shipIp = ValueNotifier<String>("192.168.137.78");
+
   late SharedPreferences _prefs;
 
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
+
+    if (!_prefs.containsKey("ship_ip")) {
+      await _prefs.setString("ship_ip", "192.168.137.78");
+    }
+    shipIp.value = _prefs.getString("ship_ip") ?? "192.168.137.78";
 
     if (!_prefs.containsKey("camera_${CameraId.front.key}_name")) {
       await reset();
@@ -25,6 +32,15 @@ class SettingsManager {
     }
 
     cameras.value = CameraId.values.map(_loadCamera).toList();
+  }
+
+  String getShipIp() {
+    return shipIp.value;
+  }
+
+  Future<void> saveShipIp(String ip) async {
+    shipIp.value = ip;
+    await _prefs.setString("ship_ip", ip);
   }
 
   CameraConfig getCamera(CameraId id) {
@@ -53,6 +69,8 @@ class SettingsManager {
     for (final config in configs) {
       await _saveCamera(config);
     }
+
+    await saveShipIp("192.168.137.78");
   }
 
   CameraConfig _loadCamera(CameraId id) {

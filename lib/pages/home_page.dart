@@ -4,6 +4,9 @@ import '../enums/camera_id.dart';
 import '../enums/camera_state.dart';
 import '../services/camera_manager.dart';
 import '../services/camera_session.dart';
+import '../services/parser_ai.dart';
+import '../services/siyi_service.dart';
+import '../utils/siyi_command.dart';
 import '../widgets/camera_overlay.dart';
 import '../widgets/main_appbar.dart';
 import '../widgets/side_panel.dart';
@@ -57,16 +60,63 @@ class _HomePageState extends State<HomePage> {
       borderRadius: BorderRadius.circular(6),
       child: ColoredBox(
         color: Colors.black,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Video(
-              controller: session.videoController!,
-              controls: NoVideoControls,
-              fit: BoxFit.contain,
-            ),
-            CameraOverlay(session: session),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double widgetWidth = constraints.maxWidth;
+            final double widgetHeight = constraints.maxHeight;
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTapUp: (details) {
+                    if (session.config.id != CameraId.front) return;
+
+                    final RenderBox renderBox =
+                        context.findRenderObject() as RenderBox;
+                    final localSize = renderBox.size;
+
+                    final tapPosition = details.localPosition;
+                    double clickX = tapPosition.dx;
+                    double clickY = tapPosition.dy;
+
+                    const double frameWidth = 1280;
+                    const double frameHeight = 720;
+
+                    int scaledX = ((clickX / localSize.width) * frameWidth)
+                        .toInt();
+                    int scaledY = ((clickY / localSize.height) * frameHeight)
+                        .toInt();
+
+                    scaledX = scaledX.clamp(0, frameWidth.toInt());
+                    scaledY = scaledY.clamp(0, frameHeight.toInt());
+
+                    SiyiService().sendToCamera(
+                      SiyiCmd.setAutoFocus(scaledX, scaledY),
+                    );
+
+                    if (SiyiAiParser.isAiMode.value) {
+                      SiyiService().sendToAi(
+                        SiyiCmd.setTrackTarget(1, scaledX, scaledY),
+                      );
+                      // SiyiService().sendToAi(SiyiCmd.setAiCoordFlowState(0));
+                    }
+
+                    debugPrint(
+                      "🎯 Front Camera Clicked: X=$scaledX, Y=$scaledY",
+                    );
+                  },
+                  child: Video(
+                    controller: session.videoController!,
+                    controls: NoVideoControls,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+
+                CameraOverlay(session: session),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -85,7 +135,8 @@ class _HomePageState extends State<HomePage> {
     final bottomHeight =
         (constraints.maxHeight - 2 * padding - spacing) * 1 / 3;
     final bottomWidth = bottomHeight * 16 / 9;
-    final sideWidth = constraints.maxWidth - (frontWidth + 2 * padding + spacing);
+    final sideWidth =
+        constraints.maxWidth - (frontWidth + 2 * padding + spacing);
 
     return Padding(
       padding: const EdgeInsets.all(padding),

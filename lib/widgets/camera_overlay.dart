@@ -5,6 +5,7 @@ import '../models/camera_status.dart';
 import '../services/camera_session.dart';
 import '../services/camera_manager.dart';
 import '../services/recording_manager.dart';
+import 'camera_control.dart';
 
 class CameraOverlay extends StatelessWidget {
   const CameraOverlay({super.key, required this.session});
@@ -13,14 +14,37 @@ class CameraOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final CameraManager manager = CameraManager.instance;
+
     return ValueListenableBuilder(
       valueListenable: session.status,
       builder: (_, status, _) {
-        return Column(
+        return Stack(
           children: [
-            _buildTopBar(status),
-            const Spacer(),
-            _buildBottomBar(status),
+            Column(
+              children: [
+                _buildTopBar(status),
+                const Spacer(),
+                _buildBottomBar(status),
+              ],
+            ),
+
+            ValueListenableBuilder(
+              valueListenable: manager.fullscreenCamera,
+              builder: (_, _, _) {
+                final isFullscreen = manager.isFullscreen(session.config.id);
+                final isFrontCamera = session.config.id == CameraId.front;
+
+                if (isFrontCamera && isFullscreen) {
+                  return const Positioned(
+                    right: 16,
+                    top: 60,
+                    child: CameraControlPanel(),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ],
         );
       },
