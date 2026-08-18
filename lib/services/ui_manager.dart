@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-enum SidePanelMode { dashboard, network, record }
+enum SidePanelMode { dashboard, network, record, settings }
 
 class UiManager {
   UiManager._();

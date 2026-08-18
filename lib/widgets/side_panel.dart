@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../panels/record_panel.dart';
+import '../panels/settings_panel.dart';
 import '../services/ui_manager.dart';
 import '../panels/dashboard_panel.dart';
 import '../panels/network_panel.dart';
@@ -42,6 +43,7 @@ class SidePanel extends StatelessWidget {
                     SidePanelMode.dashboard => "Dashboard",
                     SidePanelMode.network => "Network",
                     SidePanelMode.record => "Record",
+                    SidePanelMode.settings => "Settings",
                   },
                   style: const TextStyle(
                     color: Colors.white,
@@ -58,7 +60,17 @@ class SidePanel extends StatelessWidget {
               const SizedBox(width: 4),
               _buildPanelButton(Icons.link, SidePanelMode.network, mode),
               const SizedBox(width: 4),
-              _buildPanelButton(Icons.videocam_outlined, SidePanelMode.record, mode),
+              _buildPanelButton(
+                Icons.videocam_outlined,
+                SidePanelMode.record,
+                mode,
+              ),
+              const SizedBox(width: 4),
+              _buildPanelButton(
+                Icons.settings,
+                SidePanelMode.settings,
+                mode,
+              ),
             ],
           ),
         );
@@ -98,6 +110,8 @@ class SidePanel extends StatelessWidget {
             return const NetworkPanel();
           case SidePanelMode.record:
             return const RecordPanel();
+          case SidePanelMode.settings:
+            return const SettingsPanel();
         }
       },
     );

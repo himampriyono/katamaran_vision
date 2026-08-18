@@ -1,178 +1,123 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class SiyiAiParser {
+  // ValueNotifiers untuk State Management UI
   static final ValueNotifier<String> fwVersion = ValueNotifier<String>("");
   static final ValueNotifier<bool> isAiMode = ValueNotifier<bool>(false);
-  static final ValueNotifier<String> trackStatus = ValueNotifier<String>(
-    "Idle",
-  );
+  static final ValueNotifier<int> trackStatus = ValueNotifier<int>(0);
   static final ValueNotifier<int> flowState = ValueNotifier<int>(0);
   static final ValueNotifier<AiTargetData> targetData =
       ValueNotifier<AiTargetData>(const AiTargetData());
 
-  static SiyiAiResponse? parse(Uint8List packet) {
-    if (packet.length < 10) return null;
-    if (packet[0] != 0x55 || packet[1] != 0x66) return null;
+  static String _lastTargetType = "NONE";
+  static int _lastTrackStatus = 0;
+  static DateTime _lastParseTime = DateTime.now();
+  static Timer? _targetTimeoutTimer;
 
-    int dataLen = packet[3] | (packet[4] << 8);
+  static const int _payloadOffset = 8;
 
-    if (packet.length < 7 + dataLen + 2) return null;
+  static void parse(Uint8List packet) {
+    try {
+      if (packet.length < 10) return;
+      if (packet[0] != 0x55 || packet[1] != 0x66) return;
 
-    int cmdId = packet[7];
-    Uint8List payload = packet.sublist(8, 8 + dataLen);
+      final int dataLen = packet[3] | (packet[4] << 8);
+      if (packet.length < _payloadOffset + dataLen) return;
 
-    return _decodeAiPayload(cmdId, payload);
-  }
+      final int cmdId = packet[7];
 
-  static SiyiAiResponse _decodeAiPayload(int cmdId, Uint8List payload) {
-    switch (cmdId) {
-      case 0x01: // Request AI Firmware Version Number
-        if (payload.length >= 4) {
-          int verInt =
-              payload[0] |
-              (payload[1] << 8) |
-              (payload[2] << 16) |
-              (payload[3] << 24);
-          int patch = verInt & 0xFF;
-          int minor = (verInt >> 8) & 0xFF;
-          int major = (verInt >> 16) & 0xFF;
+      switch (cmdId) {
+        case 0x01: // Firmware Version (Butuh 4 bytes)
+          if (dataLen >= 4 && packet.length >= _payloadOffset + 4) {
+            int verInt =
+                packet[8] |
+                (packet[9] << 8) |
+                (packet[10] << 16) |
+                (packet[11] << 24);
+            int patch = verInt & 0xFF;
+            int minor = (verInt >> 8) & 0xFF;
+            int major = (verInt >> 16) & 0xFF;
 
-          String versionStr = 'v$major.$minor.$patch';
-          fwVersion.value = versionStr;
+            fwVersion.value = 'v$major.$minor.$patch';
+          }
+          break;
 
-          return SiyiAiResponse(
-            cmdId: cmdId,
-            data: {'fw_version': 'v$major.$minor.$patch'},
-          );
-        }
-        break;
+        case 0x03: // Req AI Status
+        case 0x04:
+          if (dataLen >= 1 && packet.length >= _payloadOffset + 1) {
+            isAiMode.value = packet[8] == 1;
+          }
+          break;
 
-      case 0x03: // Request AI Module Identification Status
-      case 0x04: // Set/Ack AI Module Identification Status
-        if (payload.isNotEmpty) {
-          int aiMode = payload[0];
-          bool modeBool = aiMode == 1;
+        case 0x05:
+          if (dataLen >= 1 && packet.length >= _payloadOffset + 1) {
+            int sta = packet[8];
+            if (sta != 1) {
+              targetData.value = const AiTargetData();
+              _lastTargetType = "NONE";
+              _lastTrackStatus = 0;
+            }
+            trackStatus.value = sta;
+          }
+          break;
 
-          isAiMode.value = modeBool;
-          return SiyiAiResponse(
-            cmdId: cmdId,
-            data: {'ai_mode': aiMode == 1, 'status_raw': aiMode},
-          );
-        }
-        break;
+        case 0x08:
+        case 0x09:
+          if (dataLen >= 1 && packet.length >= _payloadOffset + 1) {
+            flowState.value = packet[8];
+          }
+          break;
 
-      case 0x06: // Set AI Module to Track Target (ACK Status)
-        if (payload.isNotEmpty) {
-          int sta = payload[0];
-          // 0: setting error, 1: success, 2: not in AI mode, 3: stream not support
-          String statusDesc = switch (sta) {
-            0 => 'Setting Error',
-            1 => 'Success (Tracking)',
-            2 => 'Not in AI Mode',
-            3 => 'Stream Not Support',
-            _ => 'Unknown',
-          };
+        case 0x0A:
+          // debugPrint("got 0x0A");
+          _targetTimeoutTimer?.cancel();
 
-          trackStatus.value = statusDesc;
+          _targetTimeoutTimer = Timer(const Duration(seconds: 2), () {
+            targetData.value = const AiTargetData();
+          });
 
-          return SiyiAiResponse(
-            cmdId: cmdId,
-            data: {'status_code': sta, 'status_desc': statusDesc},
-          );
-        }
-        break;
+          if (dataLen >= 10 && packet.length >= _payloadOffset + 10) {
+            final now = DateTime.now();
+            if (now.difference(_lastParseTime).inMilliseconds < 100) {
+              return;
+            }
+            _lastParseTime = now;
+            int targetId = packet[16];
+            int sta = packet[17];
 
-      case 0x08: // Obtain Coordinate Info Flow State
-      case 0x09: // Set Coordinate Info Flow State
-        if (payload.isNotEmpty) {
-          int sta = payload[0];
+            String tType = switch (targetId) {
+              0 => 'People',
+              1 => 'Car',
+              2 => 'Bus',
+              3 => 'Truck',
+              255 => 'Custom Object',
+              _ => 'Unknown ($targetId)',
+            };
 
-          flowState.value = sta;
+            targetData.value = AiTargetData(
+              targetType: tType,
+              trackStatus: sta,
+            );
+          }
+          break;
+        // return;
 
-          return SiyiAiResponse(cmdId: cmdId, data: {'flow_state': sta});
-        }
-
-        break;
-
-      case 0x0A: // AI Module Tracking Target Coordinate Info Stream
-        debugPrint("📦 RAW 0x0A Payload (Len: ${payload.length}): $payload");
-        if (payload.length >= 10) {
-          int posX = payload[0] | (payload[1] << 8);
-          int posY = payload[2] | (payload[3] << 8);
-          int posWidth = payload[4] | (payload[5] << 8);
-          int posHeight = payload[6] | (payload[7] << 8);
-          int targetId = payload[8];
-          int trackSta = payload[9];
-
-          // Terjemahkan Target ID sesuai SDK
-          String targetType = switch (targetId) {
-            0 => 'People (Orang)',
-            1 => 'Car (Mobil)',
-            2 => 'Bus',
-            3 => 'Truck (Truk)',
-            255 => 'Arbitrary Object (Bebas)',
-            _ => 'Unknown ($targetId)',
-          };
-
-          targetData.value = AiTargetData(
-            targetType: targetType,
-            posX: posX,
-            posY: posY,
-            width: posWidth,
-            height: posHeight,
-            trackStatus: trackSta,
-          );
-
-          return SiyiAiResponse(
-            cmdId: cmdId,
-            data: {
-              'target_type': targetType,
-              'pos_x': posX,
-              'pos_y': posY,
-              'width': posWidth,
-              'height': posHeight,
-              'track_status': trackSta,
-            },
-          );
-        }
-        break;
-
-      default:
-        // Jika ada cmdId asing yang belum terdaftar, akan masuk ke sini
-        print(
-          "⚠️ [IN-AI] Unknown CmdID ditemukan: 0x${cmdId.toRadixString(16).padLeft(2, '0')}",
-        );
-        break;
+        default:
+          break;
+      }
+    } catch (_) {
+      // Abaikan jika ada paket rusak/korup di jaringan
     }
-    return SiyiAiResponse(cmdId: cmdId, data: {'raw_payload': payload});
   }
-}
-
-class SiyiAiResponse {
-  final int cmdId;
-  final Map<String, dynamic> data;
-
-  SiyiAiResponse({required this.cmdId, required this.data});
 }
 
 class AiTargetData {
   final String targetType;
-  final int posX;
-  final int posY;
-  final int width;
-  final int height;
   final int trackStatus;
 
-  const AiTargetData({
-    this.targetType = "NONE",
-    this.posX = 0,
-    this.posY = 0,
-    this.width = 0,
-    this.height = 0,
-    this.trackStatus = 0,
-  });
+  const AiTargetData({this.targetType = "NONE", this.trackStatus = 3});
 
-  bool get isTracking => trackStatus == 1;
+  bool get isTracking => trackStatus == 0 || trackStatus == 4;
 }

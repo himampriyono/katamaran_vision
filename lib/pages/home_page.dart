@@ -5,6 +5,8 @@ import '../enums/camera_state.dart';
 import '../services/camera_manager.dart';
 import '../services/camera_session.dart';
 import '../services/parser_ai.dart';
+import '../services/parser_cam.dart';
+import '../services/settings_manager.dart';
 import '../services/siyi_service.dart';
 import '../utils/siyi_command.dart';
 import '../widgets/camera_overlay.dart';
@@ -62,8 +64,10 @@ class _HomePageState extends State<HomePage> {
         color: Colors.black,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final double widgetWidth = constraints.maxWidth;
-            final double widgetHeight = constraints.maxHeight;
+            // final double widgetWidth = constraints.maxWidth;
+            // final double widgetHeight = constraints.maxHeight;
+            Offset? _startPos;
+            Offset? _lastPos;
 
             return Stack(
               fit: StackFit.expand,
@@ -99,12 +103,98 @@ class _HomePageState extends State<HomePage> {
                       SiyiService().sendToAi(
                         SiyiCmd.setTrackTarget(1, scaledX, scaledY),
                       );
-                      // SiyiService().sendToAi(SiyiCmd.setAiCoordFlowState(0));
+                      SiyiService().sendToAi(SiyiCmd.setAiCoordFlowState(1));
                     }
 
                     debugPrint(
                       "🎯 Front Camera Clicked: X=$scaledX, Y=$scaledY",
                     );
+                  },
+                  onPanStart: (details) {
+                    if (session.config.id != CameraId.front) return;
+                    if (!SiyiAiParser.isAiMode.value) return;
+
+                    final RenderBox renderBox =
+                        context.findRenderObject() as RenderBox;
+                    final localSize = renderBox.size;
+
+                    final startPosition = details.localPosition;
+                    double clickX = startPosition.dx;
+                    double clickY = startPosition.dy;
+
+                    const double frameWidth = 1280;
+                    const double frameHeight = 720;
+
+                    double scaledX = ((clickX / localSize.width) * frameWidth);
+                    double scaledY =
+                        ((clickY / localSize.height) * frameHeight);
+
+                    scaledX = scaledX.clamp(0, frameWidth);
+                    scaledY = scaledY.clamp(0, frameHeight);
+                    _startPos = Offset(scaledX, scaledY);
+                  },
+                  onPanUpdate: (details) {
+                    if (session.config.id != CameraId.front) return;
+                    if (SiyiAiParser.isAiMode.value) return;
+
+                    double zoomLevel = SiyiCamParser.currentZoom.value;
+                    double baseSensitivity =
+                        SettingsManager.instance.panSensitivity.value;
+                    double dynamicSensitivity =
+                        baseSensitivity / zoomLevel * 1.5;
+                    int yawSpeed = (details.delta.dx * dynamicSensitivity)
+                        .clamp(-100, 100)
+                        .toInt();
+                    int pitchSpeed = (-details.delta.dy * dynamicSensitivity)
+                        .clamp(-100, 100)
+                        .toInt();
+                    // debugPrint("${details.delta.dx}");
+                    // debugPrint("$yawSpeed, $pitchSpeed");
+                    SiyiService().sendToCamera(
+                      SiyiCmd.gimbalRotation(yawSpeed, pitchSpeed),
+                    );
+                  },
+                  onPanEnd: (details) {
+                    if (SiyiAiParser.isAiMode.value) {
+                      if (session.config.id != CameraId.front) return;
+                      if (!SiyiAiParser.isAiMode.value) return;
+
+                      final RenderBox renderBox =
+                          context.findRenderObject() as RenderBox;
+                      final localSize = renderBox.size;
+
+                      final startPosition = details.localPosition;
+                      double clickX = startPosition.dx;
+                      double clickY = startPosition.dy;
+
+                      const double frameWidth = 1280;
+                      const double frameHeight = 720;
+
+                      double scaledX =
+                          ((clickX / localSize.width) * frameWidth);
+                      double scaledY =
+                          ((clickY / localSize.height) * frameHeight);
+
+                      scaledX = scaledX.clamp(0, frameWidth);
+                      scaledY = scaledY.clamp(0, frameHeight);
+                      _lastPos = Offset(scaledX, scaledY);
+
+                      // debugPrint(
+                      //   "${_startPos!.dx}, ${_startPos!.dy}, ${_lastPos!.dx}, ${_lastPos!.dy}",
+                      // );
+                      SiyiService().sendToAi(
+                        SiyiCmd.setTrackTarget(
+                          1,
+                          _startPos!.dx.toInt(),
+                          _startPos!.dy.toInt(),
+                          rx: _lastPos!.dx.toInt(),
+                          ry: _lastPos!.dy.toInt(),
+                        ),
+                      );
+                      SiyiService().sendToAi(SiyiCmd.setAiCoordFlowState(1));
+                    } else {
+                      SiyiService().sendToCamera(SiyiCmd.gimbalRotation(0, 0));
+                    }
                   },
                   child: Video(
                     controller: session.videoController!,

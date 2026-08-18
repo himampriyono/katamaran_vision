@@ -14,34 +14,9 @@ class DashboardPanel extends StatefulWidget {
 }
 
 class _DashboardPanelState extends State<DashboardPanel> {
-  late StreamSubscription<SiyiResponseData> _siyiSubscribtion;
-  bool _isAiActive = false;
-  String _targetType = "NONE";
-  String _targetPos = "0, 0";
-  bool _isTracking = false;
-
   @override
   void initState() {
     super.initState();
-    _siyiSubscribtion = SiyiService().responseStream.listen((responseData) {
-      final aiResponse = SiyiAiParser.parse(
-        Uint8List.fromList(responseData.data),
-      );
-
-      if (aiResponse != null && aiResponse.cmdId == 0x0A) {
-        setState(() {
-          _isTracking = aiResponse.data['track'];
-        });
-      }
-    });
-  }
-
-  void _toggleAi() {
-    setState(() {
-      _isAiActive = !_isAiActive;
-    });
-
-    SiyiService().sendToAi(SiyiCmd.setAiStatus(_isAiActive ? 1 : 0));
   }
 
   @override
@@ -51,82 +26,70 @@ class _DashboardPanelState extends State<DashboardPanel> {
       color: const Color(0xFF1A1F2C),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ValueListenableBuilder<AiTargetData>(
+          const Text(
+            "TARGET INFORMATION",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ValueListenableBuilder(
             valueListenable: SiyiAiParser.targetData,
             builder: (context, data, _) {
-              final isTracking = data.isTracking;
+              final bool isTracking = data.isTracking;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Target Info",
-                    style: TextStyle(
-                      color: Colors.blueGrey,
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.bold,
-                    ),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131722),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isTracking
+                        ? Colors.green.withAlpha(100)
+                        : Colors.white10,
                   ),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF131722),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
                         color: isTracking
-                            ? Colors.green.withAlpha(50)
-                            : Colors.white10,
+                            ? Colors.green.withAlpha(30)
+                            : Colors.white.withAlpha(15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        Icons.gps_fixed,
+                        color: isTracking ? Colors.greenAccent : Colors.white38,
+                        size: 20,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isTracking
-                                ? Colors.green.withAlpha(50)
-                                : Colors.white.withAlpha(10),
-                            borderRadius: BorderRadius.circular(6),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _InfoTile(label: "TYPE", value: data.targetType),
+                          _InfoTile(label: "DISTANCE", value: "-"),
+                          _InfoTile(
+                            label: "STATUS",
+                            value: isTracking ? "LOCKED" : "SEARCHING",
                           ),
-                          child: Icon(
-                            Icons.gps_fixed,
-                            color: isTracking
-                                ? Colors.greenAccent
-                                : Colors.white38,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _InfoTile(label: "TYPE", value: data.targetType),
-                              _InfoTile(
-                                label: "POS",
-                                value: "${data.posX}, ${data.posY}",
-                              ),
-                              _InfoTile(
-                                label: "STATUS",
-                                value: isTracking ? "TRACKING" : "IDLE",
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           ),
 
-          const SizedBox(height: 16),
-
-          // --- CONTROL SECTION ---
           const Text(
             "CAMERA CONTROL",
             style: TextStyle(
@@ -136,37 +99,99 @@ class _DashboardPanelState extends State<DashboardPanel> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+
+          Column(
             children: [
-              _ControlInkButton(
-                icon: Icons.zoom_in,
-                label: "Zoom In",
-                color: Colors.lightBlueAccent,
-                onTapDown: () => SiyiService().sendToCamera(SiyiCmd.setZoomIn),
-                onTapUp: () => SiyiService().sendToCamera(SiyiCmd.setZoomStop),
+              // --- BARIS PERTAMA: ZOOM IN & ZOOM OUT ---
+              Row(
+                children: [
+                  Expanded(
+                    child: _ControlInkButton(
+                      icon: Icons.zoom_in,
+                      label: "Zoom In",
+                      color: Colors.lightBlueAccent,
+                      onTapDown: () =>
+                          SiyiService().sendToCamera(SiyiCmd.setZoomIn),
+                      onTapUp: () =>
+                          SiyiService().sendToCamera(SiyiCmd.setZoomStop),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ControlInkButton(
+                      icon: Icons.zoom_out,
+                      label: "Zoom Out",
+                      color: Colors.lightBlueAccent,
+                      onTapDown: () =>
+                          SiyiService().sendToCamera(SiyiCmd.setZoomOut),
+                      onTapUp: () =>
+                          SiyiService().sendToCamera(SiyiCmd.setZoomStop),
+                    ),
+                  ),
+                ],
               ),
-              _ControlInkButton(
-                icon: Icons.zoom_out,
-                label: "Zoom Out",
-                color: Colors.lightBlueAccent,
-                onTapDown: () => SiyiService().sendToCamera(SiyiCmd.setZoomOut),
-                onTapUp: () => SiyiService().sendToCamera(SiyiCmd.setZoomStop),
-              ),
-              _ControlInkButton(
-                icon: Icons.home,
-                label: "Gimbal Home",
-                color: Colors.orangeAccent,
-                onTap: () =>
-                    SiyiService().sendToCamera(SiyiCmd.setGimbalCenter),
-              ),
-              _ControlInkButton(
-                icon: Icons.psychology,
-                label: _isAiActive ? "AI: ON" : "AI: OFF",
-                color: _isAiActive ? Colors.greenAccent : Colors.redAccent,
-                isActive: _isAiActive,
-                onTap: _toggleAi,
+              const SizedBox(height: 8),
+
+              // --- BARIS KEDUA: GIMBAL HOME & AI MODE / CANCEL TRACKING ---
+              ValueListenableBuilder(
+                valueListenable: SiyiAiParser.targetData,
+                builder: (_, targetData, __) {
+                  final bool isTracking = targetData.isTracking;
+
+                  return Row(
+                    children: [
+                      // Tombol Gimbal Home selalu ada di kiri baris kedua
+                      Expanded(
+                        child: _ControlInkButton(
+                          icon: Icons.fullscreen_exit_outlined,
+                          label: "Gimbal Home",
+                          color: Colors.orangeAccent,
+                          onTap: () => SiyiService().sendToCamera(
+                            SiyiCmd.setGimbalCenter,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Sisi kanan baris kedua berubah dinamis (AI Mode atau Cancel Tracking)
+                      Expanded(
+                        child: isTracking
+                            ? _ControlInkButton(
+                                icon: Icons.cancel_outlined,
+                                label: "Cancel Track",
+                                color: Colors.redAccent,
+                                isActive: true,
+                                onTap: () {
+                                  SiyiService().sendToAi(
+                                    SiyiCmd.setTrackTarget(0, 0, 0),
+                                  );
+                                },
+                              )
+                            : ValueListenableBuilder(
+                                valueListenable: SiyiAiParser.isAiMode,
+                                builder: (_, isAI, __) {
+                                  return _ControlInkButton(
+                                    icon: Icons.view_in_ar,
+                                    label: isAI ? "AI: ON" : "AI: OFF",
+                                    color: isAI
+                                        ? Colors.greenAccent
+                                        : Colors.redAccent,
+                                    isActive: isAI,
+                                    onTap: () {
+                                      isAI
+                                          ? SiyiService().sendToAi(
+                                              SiyiCmd.setAiStatus(0),
+                                            )
+                                          : SiyiService().sendToAi(
+                                              SiyiCmd.setAiStatus(1),
+                                            );
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
@@ -206,14 +231,15 @@ class _ControlInkButton extends StatelessWidget {
         onTapCancel: onTapUp != null ? () => onTapUp!() : null,
         borderRadius: BorderRadius.circular(6),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             border: Border.all(color: color, width: 0.8),
             color: isActive ? color.withAlpha(50) : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
             children: [
               Icon(icon, color: color, size: 18),
               const SizedBox(width: 6),

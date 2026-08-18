@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 
+import '../utils/siyi_command.dart';
 import 'parser_ai.dart';
 import 'parser_cam.dart';
 
@@ -32,15 +33,27 @@ class SiyiService {
 
       _socket!.listen((RawSocketEvent event) {
         if (event == RawSocketEvent.read) {
-          Datagram? datagram = _socket!.receive();
-          if (datagram != null) {
-            _responseController.add(
-              SiyiResponseData(
-                sourceIp: datagram.address.address,
-                sourcePort: datagram.port,
-                data: datagram.data,
-              ),
-            );
+          // Datagram? datagram = _socket!.receive();
+          // if (datagram != null) {
+          //   _responseController.add(
+          //     SiyiResponseData(
+          //       sourceIp: datagram.address.address,
+          //       sourcePort: datagram.port,
+          //       data: datagram.data,
+          //     ),
+          //   );
+          // }
+          Datagram? datagram;
+          while ((datagram = _socket!.receive()) != null) {
+            if (datagram != null) {
+              _responseController.add(
+                SiyiResponseData(
+                  sourceIp: datagram.address.address,
+                  sourcePort: datagram.port,
+                  data: datagram.data,
+                ),
+              );
+            }
           }
         }
       });
@@ -52,6 +65,10 @@ class SiyiService {
   Future<void> startService(String ip) async {
     await init(ip);
     debugPrint("SiyiService aktif terhubung ke IP: $ip");
+
+    sendToAi(SiyiCmd.reqAiStatus);
+    sendToAi(SiyiCmd.reqAiTrackStatus);
+    sendToAi(SiyiCmd.setAiCoordFlowState(1));
 
     responseStream.listen((response) {
       if (response.sourcePort == 37261) {

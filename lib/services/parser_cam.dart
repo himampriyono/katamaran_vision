@@ -1,6 +1,9 @@
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 
 class SiyiCamParser {
+  static final ValueNotifier<double> currentZoom = ValueNotifier<double>(1.0);
+
   static SiyiCamResponse? parse(Uint8List packet) {
     if (packet.length < 10) return null;
     if (packet[0] != 0x55 || packet[1] != 0x66) return null; //Validasi Header
@@ -68,6 +71,8 @@ class SiyiCamParser {
         if (payload.length >= 2) {
           int rawVal = payload[0] | (payload[1] << 8);
           double zoomMultiple = rawVal / 10.0;
+          currentZoom.value = zoomMultiple;
+          // debugPrint("$zoomMultiple");
           return SiyiCamResponse(
             cmdId: cmdId,
             data: {'zoom_multiple': zoomMultiple},

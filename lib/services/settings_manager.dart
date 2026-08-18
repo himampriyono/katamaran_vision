@@ -15,6 +15,7 @@ class SettingsManager {
       ValueNotifier<List<CameraConfig>>([]);
 
   final ValueNotifier<String> shipIp = ValueNotifier<String>("192.168.137.78");
+  final ValueNotifier<double> panSensitivity = ValueNotifier<double>(5.0);
 
   late SharedPreferences _prefs;
 
@@ -30,8 +31,12 @@ class SettingsManager {
       await reset();
       return;
     }
-
     cameras.value = CameraId.values.map(_loadCamera).toList();
+
+    if (!_prefs.containsKey("pan_sensitivity")) {
+      await _prefs.setDouble("pan_sensitivity", 5.0);
+    }
+    panSensitivity.value = _prefs.getDouble("pan_sensitivity") ?? 5.0;
   }
 
   String getShipIp() {
@@ -59,6 +64,15 @@ class SettingsManager {
     await _saveCamera(config);
 
     await MediaMTXService.instance.updatePath(config);
+  }
+
+  double getPanSensitivity() {
+    return panSensitivity.value;
+  }
+
+  Future<void> savePanSensitivity(double sensitivity) async {
+    panSensitivity.value = sensitivity;
+    await _prefs.setDouble("pan_sensitivity", sensitivity);
   }
 
   Future<void> reset() async {

@@ -90,13 +90,13 @@ class _CameraControlPanelState extends State<CameraControlPanel> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      "POS: ${data.posX}, ${data.posY}",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
-                      ),
-                    ),
+                    // Text(
+                    //   "POS: ${data.posX}, ${data.posY}",
+                    //   style: const TextStyle(
+                    //     color: Colors.white70,
+                    //     fontSize: 10,
+                    //   ),
+                    // ),
                   ],
                 ),
               );

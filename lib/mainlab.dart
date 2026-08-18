@@ -67,11 +67,11 @@ class _SiyiLabScreenState extends State<SiyiLabScreen> {
         }
       } else if (response.sourcePort == 37262) {
         var parsedAi = SiyiAiParser.parse(Uint8List.fromList(response.data));
-        if (parsedAi != null) {
-          _addLog(
-            "🤖 [AI] Cmd 0x${parsedAi.cmdId.toRadixString(16).padLeft(2, '0')}: ${parsedAi.data}",
-          );
-        }
+        // if (parsedAi != null) {
+        //   _addLog(
+        //     "🤖 [AI] Cmd 0x${parsedAi.cmdId.toRadixString(16).padLeft(2, '0')}: ${parsedAi.data}",
+        //   );
+        // }
       }
     });
   }
