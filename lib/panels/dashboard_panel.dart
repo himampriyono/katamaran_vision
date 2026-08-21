@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import '../services/parser_ai.dart';
+import '../services/parser_cam.dart';
 import '../services/siyi_service.dart';
 import '../utils/siyi_command.dart';
 
@@ -71,12 +72,66 @@ class _DashboardPanelState extends State<DashboardPanel> {
                       ),
                     ),
                     const SizedBox(width: 12),
+
                     Expanded(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _InfoTile(label: "TYPE", value: data.targetType),
-                          _InfoTile(label: "DISTANCE", value: "-"),
+                          // _InfoTile(label: "DISTANCE", value: "-"),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: SiyiCamParser.isLrfOn,
+                            builder: (context, isLrfActive, _) {
+                              return ValueListenableBuilder<double>(
+                                valueListenable: SiyiCamParser.lrfDistance,
+                                builder: (context, distance, _) {
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            "LRF DIST",
+                                            style: TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          // Titik status LRF (Hijau jika ON, Abu-abu jika OFF)
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: isLrfActive
+                                                  ? Colors.greenAccent
+                                                  : Colors.white24,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isLrfActive
+                                            ? "${distance.toStringAsFixed(1)} m"
+                                            : "OFF",
+                                        style: TextStyle(
+                                          color: isLrfActive
+                                              ? Colors.greenAccent
+                                              : Colors.white60,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          ),
                           _InfoTile(
                             label: "STATUS",
                             value: isTracking ? "LOCKED" : "SEARCHING",
@@ -99,10 +154,37 @@ class _DashboardPanelState extends State<DashboardPanel> {
             ),
           ),
           const SizedBox(height: 12),
-
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ValueListenableBuilder<double>(
+                valueListenable: SiyiCamParser.currentZoom,
+                builder: (context, zoomVal, _) {
+                  return Text(
+                    "Zoom: ${zoomVal.toStringAsFixed(1)}X",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+              SizedBox(width: 25),
+              ValueListenableBuilder<Map<String, double>>(
+                valueListenable: SiyiCamParser.gimbalAttitude,
+                builder: (_, attitude, __) {
+                  return Text(
+                    "Yaw: ${attitude['yaw']}° | Pitch: ${attitude['pitch']}°",
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Column(
             children: [
-              // --- BARIS PERTAMA: ZOOM IN & ZOOM OUT ---
               Row(
                 children: [
                   Expanded(
@@ -132,7 +214,6 @@ class _DashboardPanelState extends State<DashboardPanel> {
               ),
               const SizedBox(height: 8),
 
-              // --- BARIS KEDUA: GIMBAL HOME & AI MODE / CANCEL TRACKING ---
               ValueListenableBuilder(
                 valueListenable: SiyiAiParser.targetData,
                 builder: (_, targetData, __) {
@@ -177,19 +258,47 @@ class _DashboardPanelState extends State<DashboardPanel> {
                                         : Colors.redAccent,
                                     isActive: isAI,
                                     onTap: () {
-                                      isAI
-                                          ? SiyiService().sendToAi(
-                                              SiyiCmd.setAiStatus(0),
-                                            )
-                                          : SiyiService().sendToAi(
-                                              SiyiCmd.setAiStatus(1),
-                                            );
+                                      if (isAI) {
+                                        SiyiService().sendToAi(
+                                          SiyiCmd.setAiStatus(0),
+                                        );
+                                        SiyiService.streamAtt = false;
+                                        SiyiService().disableAndStopLaser();
+                                      } else {
+                                        SiyiService().sendToAi(
+                                          SiyiCmd.setAiStatus(1),
+                                        );
+                                        SiyiService.streamAtt = true;
+                                        SiyiService().enableAndPollLaser();
+                                      }
                                     },
                                   );
                                 },
                               ),
                       ),
                     ],
+                  );
+                },
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              ValueListenableBuilder(
+                valueListenable: SiyiCamParser.isLrfOn,
+                builder: (_, isActive, _) {
+                  return _ControlInkButton(
+                    icon: Icons.sensors,
+                    label: isActive ? "LRF: ON" : "LRF: OFF",
+                    color: isActive ? Colors.greenAccent : Colors.redAccent,
+                    onTap: () {
+                      if (isActive) {
+                        SiyiService().disableAndStopLaser();
+                      } else {
+                        SiyiService().enableAndPollLaser();
+                      }
+                    },
                   );
                 },
               ),

@@ -20,6 +20,7 @@ class CameraOverlay extends StatelessWidget {
       valueListenable: session.status,
       builder: (_, status, _) {
         return Stack(
+          alignment: Alignment.center,
           children: [
             Column(
               children: [
@@ -29,6 +30,16 @@ class CameraOverlay extends StatelessWidget {
               ],
             ),
 
+            if (session.config.id == CameraId.front)
+              IgnorePointer(
+                child: Icon(
+                  Icons.add,
+                  color: Colors.red,
+                  size: 12,
+                  shadows: [Shadow(color: Colors.black.withAlpha(200), blurRadius: 4)],
+                ),
+              ),
+
             ValueListenableBuilder(
               valueListenable: manager.fullscreenCamera,
               builder: (_, _, _) {
@@ -37,8 +48,8 @@ class CameraOverlay extends StatelessWidget {
 
                 if (isFrontCamera && isFullscreen) {
                   return const Positioned(
-                    right: 16,
-                    top: 60,
+                    right: 8,
+                    top: 10,
                     child: CameraControlPanel(),
                   );
                 }

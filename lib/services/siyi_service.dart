@@ -7,12 +7,18 @@ import 'parser_ai.dart';
 import 'parser_cam.dart';
 
 class SiyiService {
+  SiyiService._internal() {
+    initMasterPolling();
+  }
   static final SiyiService _instance = SiyiService._internal();
   factory SiyiService() => _instance;
-  SiyiService._internal();
 
   RawDatagramSocket? _socket;
   bool _isInitialized = false;
+  Timer? _masterTimer;
+
+  static bool streamAtt = false;
+  static bool streamLrf = false;
 
   final _responseController = StreamController<SiyiResponseData>.broadcast();
   Stream<SiyiResponseData> get responseStream => _responseController.stream;
@@ -101,6 +107,36 @@ class SiyiService {
     } catch (e) {
       debugPrint("SiyiService Gagal Kirim ke $label: $e");
     }
+  }
+
+  Future<void> enableAndPollLaser() async {
+    sendToCamera(SiyiCmd.setLaserStatus(true));
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    streamLrf = true;
+    sendToCamera(SiyiCmd.reqLaserStatus);
+  }
+
+  void disableAndStopLaser() async {
+    streamLrf = false;
+    sendToCamera(SiyiCmd.setLaserStatus(false));
+    await Future.delayed(const Duration(milliseconds: 500));
+    sendToCamera(SiyiCmd.reqLaserStatus);
+  }
+
+  void initMasterPolling() {
+    if (_masterTimer != null && _masterTimer!.isActive) return;
+
+    _masterTimer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
+      if (streamAtt) {
+        sendToCamera(SiyiCmd.reqGmbAtt);
+      }
+
+      if (streamLrf) {
+        sendToCamera(SiyiCmd.reqLaserRange);
+      }
+    });
   }
 
   void dispose() {

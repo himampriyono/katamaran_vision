@@ -2,7 +2,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 class SiyiCamParser {
+  static final ValueNotifier<Map<String, double>> gimbalAttitude =
+      ValueNotifier<Map<String, double>>({'yaw': 0, 'pitch': 0, 'roll': 0});
   static final ValueNotifier<double> currentZoom = ValueNotifier<double>(1.0);
+  static final ValueNotifier<bool> isLrfOn = ValueNotifier<bool>(false);
+  static final ValueNotifier<double> lrfDistance = ValueNotifier<double>(0.0);
 
   static SiyiCamResponse? parse(Uint8List packet) {
     if (packet.length < 10) return null;
@@ -43,20 +47,16 @@ class SiyiCamParser {
           int pitch = _toSigned16(payload[2], payload[3]);
           int roll = _toSigned16(payload[4], payload[5]);
 
-          int yawVel = _toSigned16(payload[6], payload[7]);
-          int pitchVel = _toSigned16(payload[8], payload[9]);
-          int rollVel = _toSigned16(payload[10], payload[11]);
-          return SiyiCamResponse(
-            cmdId: cmdId,
-            data: {
-              'yaw': yaw / 10.0,
-              'pitch': pitch / 10.0,
-              'roll': roll / 10.0,
-              'yaw_velocity': yawVel / 10.0,
-              'pitch_velocity': pitchVel / 10.0,
-              'roll_velocity': rollVel / 10.0,
-            },
-          );
+          final attitudeData = {
+            'yaw': yaw / 10.0,
+            'pitch': pitch / 10.0,
+            'roll': roll / 10.0,
+          };
+
+          gimbalAttitude.value = attitudeData;
+          debugPrint("got att");
+
+          return SiyiCamResponse(cmdId: cmdId, data: attitudeData);
         }
         break;
 
@@ -85,6 +85,7 @@ class SiyiCamParser {
           int zoomInt = payload[0];
           int zoomFloat = payload[1];
           double zoomMultiple = zoomInt + (zoomFloat / 10.0);
+          // currentZoom.value = zoomMultiple;
           return SiyiCamResponse(
             cmdId: cmdId,
             data: {'zoom_multiple': zoomMultiple},
@@ -108,6 +109,40 @@ class SiyiCamParser {
           return SiyiCamResponse(
             cmdId: cmdId,
             data: {'rotation_success': status == 1},
+          );
+        }
+        break;
+
+      case 0x15:
+        if (payload.length >= 2) {
+          int rawValue = payload[0] | (payload[1] << 8);
+
+          double distanceInMeters = rawValue / 10.0;
+
+          lrfDistance.value = distanceInMeters;
+          debugPrint("got dist");
+
+          return SiyiCamResponse(
+            cmdId: cmdId,
+            data: {'lrf_distance': distanceInMeters},
+          );
+        }
+        break;
+
+      case 0x31:
+        if (payload.isNotEmpty) {
+          bool status = payload[0] == 1;
+          isLrfOn.value = status;
+          return SiyiCamResponse(cmdId: cmdId, data: {'laser_state': status});
+        }
+        break;
+
+      case 0x32:
+        if (payload.isNotEmpty) {
+          bool success = payload[0] == 1;
+          return SiyiCamResponse(
+            cmdId: cmdId,
+            data: {'set_laser_success': success},
           );
         }
         break;

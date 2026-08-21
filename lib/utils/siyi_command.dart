@@ -75,6 +75,15 @@ class SiyiCmd {
     ]);
   }
 
+  static Uint8List setLaserStatus(bool turnOn) =>
+      format(0x32, [turnOn ? 1 : 0]);
+
+  static Uint8List reqLaserStatus = format(0x31);
+
+  static Uint8List reqLaserRange = format(0x15);
+
+  static Uint8List streamData(int dataType, int freq) => format(0x25, [dataType, freq]);
+
   // Format SD Card 0x48
   static Uint8List cmdFormatSDCard = format(0x48);
 
