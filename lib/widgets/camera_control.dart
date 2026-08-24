@@ -56,9 +56,9 @@ class _CameraControlPanelState extends State<CameraControlPanel> {
                               Column(
                                 children: [
                                   Text(
-                                    isAiOn ? data.targetType : "AI OFF",
+                                    isAiOn ? data.targetType : "--",
                                     style: TextStyle(
-                                      color: isAiOn ? Colors.white : Colors.red,
+                                      color: Colors.white,
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -79,19 +79,30 @@ class _CameraControlPanelState extends State<CameraControlPanel> {
                               SizedBox(width: 12),
                               Column(
                                 children: [
-                                  Text(
-                                    "--",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  ValueListenableBuilder(
+                                    valueListenable: SiyiCamParser.objectPos,
+                                    builder: (context, objPos, _) {
+                                      bool valid = (objPos['valid'] ?? 0) == 1;
+                                      double lat = objPos['lat'] ?? 0.000000;
+                                      double lng = objPos['lng'] ?? 0.000000;
+
+                                      return Text(
+                                        valid
+                                            ? "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"
+                                            : "--",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      );
+                                    },
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    "TARGET POSITION",
+                                    "TARGET POSITION ESTIMATE",
                                     style: TextStyle(
                                       color: Colors.blueGrey,
                                       fontSize: 9,
@@ -109,11 +120,9 @@ class _CameraControlPanelState extends State<CameraControlPanel> {
                                       return Text(
                                         isLrfOn
                                             ? "${dist.toStringAsFixed(1)}m"
-                                            : "LASER OFF",
+                                            : "--",
                                         style: TextStyle(
-                                          color: isLrfOn
-                                              ? Colors.white
-                                              : Colors.red,
+                                          color: Colors.white,
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),

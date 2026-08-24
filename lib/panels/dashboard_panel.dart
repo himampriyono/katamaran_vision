@@ -57,28 +57,11 @@ class _DashboardPanelState extends State<DashboardPanel> {
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isTracking
-                            ? Colors.green.withAlpha(30)
-                            : Colors.white.withAlpha(15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.gps_fixed,
-                        color: isTracking ? Colors.greenAccent : Colors.white38,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
                     Expanded(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _InfoTile(label: "TYPE", value: data.targetType),
-                          // _InfoTile(label: "DISTANCE", value: "-"),
+                          _InfoTile(label: "TARGET TYPE", value: data.targetType),
                           ValueListenableBuilder<bool>(
                             valueListenable: SiyiCamParser.isLrfOn,
                             builder: (context, isLrfActive, _) {
@@ -89,39 +72,20 @@ class _DashboardPanelState extends State<DashboardPanel> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            "LRF DIST",
-                                            style: TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 10,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          // Titik status LRF (Hijau jika ON, Abu-abu jika OFF)
-                                          Container(
-                                            width: 6,
-                                            height: 6,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: isLrfActive
-                                                  ? Colors.greenAccent
-                                                  : Colors.white24,
-                                            ),
-                                          ),
-                                        ],
+                                      const Text(
+                                        "LRF DIST",
+                                        style: TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 10,
+                                        ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         isLrfActive
                                             ? "${distance.toStringAsFixed(1)} m"
-                                            : "OFF",
+                                            : "--",
                                         style: TextStyle(
-                                          color: isLrfActive
-                                              ? Colors.greenAccent
-                                              : Colors.white60,
+                                          color: Colors.white,
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -132,9 +96,41 @@ class _DashboardPanelState extends State<DashboardPanel> {
                               );
                             },
                           ),
+                          ValueListenableBuilder<Map<String, double>>(
+                            valueListenable: SiyiCamParser.objectPos,
+                            builder: (context, objPos, _) {
+                              bool valid = (objPos['valid'] ?? 0) == 1;
+                              double lat = objPos['lat'] ?? 0.000000;
+                              double lng = objPos['lng'] ?? 0.000000;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "TARGET LOCATION ESTIMATE",
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    valid
+                                        ? "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"
+                                        : "--",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                           _InfoTile(
                             label: "STATUS",
-                            value: isTracking ? "LOCKED" : "SEARCHING",
+                            value: isTracking ? "LOCKED" : "IDLE",
                           ),
                         ],
                       ),
@@ -171,15 +167,15 @@ class _DashboardPanelState extends State<DashboardPanel> {
                 },
               ),
               SizedBox(width: 25),
-              ValueListenableBuilder<Map<String, double>>(
-                valueListenable: SiyiCamParser.gimbalAttitude,
-                builder: (_, attitude, __) {
-                  return Text(
-                    "Yaw: ${attitude['yaw']}° | Pitch: ${attitude['pitch']}°",
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  );
-                },
-              ),
+              // ValueListenableBuilder<Map<String, double>>(
+              //   valueListenable: SiyiCamParser.gimbalAttitude,
+              //   builder: (_, attitude, __) {
+              //     return Text(
+              //       "Yaw: ${attitude['yaw']}° | Pitch: ${attitude['pitch']!.toStringAsFixed(1)}°",
+              //       style: const TextStyle(color: Colors.white, fontSize: 10),
+              //     );
+              //   },
+              // ),
             ],
           ),
           const SizedBox(height: 12),
@@ -262,13 +258,11 @@ class _DashboardPanelState extends State<DashboardPanel> {
                                         SiyiService().sendToAi(
                                           SiyiCmd.setAiStatus(0),
                                         );
-                                        SiyiService.streamAtt = false;
                                         SiyiService().disableAndStopLaser();
                                       } else {
                                         SiyiService().sendToAi(
                                           SiyiCmd.setAiStatus(1),
                                         );
-                                        SiyiService.streamAtt = true;
                                         SiyiService().enableAndPollLaser();
                                       }
                                     },

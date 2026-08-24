@@ -7,6 +7,8 @@ class SiyiCamParser {
   static final ValueNotifier<double> currentZoom = ValueNotifier<double>(1.0);
   static final ValueNotifier<bool> isLrfOn = ValueNotifier<bool>(false);
   static final ValueNotifier<double> lrfDistance = ValueNotifier<double>(0.0);
+  static final ValueNotifier<Map<String, double>> objectPos =
+      ValueNotifier<Map<String, double>>({'valid': 0, 'lat': 0.0, 'lng': 0.0});
 
   static SiyiCamResponse? parse(Uint8List packet) {
     if (packet.length < 10) return null;
@@ -44,17 +46,17 @@ class SiyiCamParser {
       case 0x0D:
         if (payload.length >= 12) {
           int yaw = _toSigned16(payload[0], payload[1]);
-          int pitch = _toSigned16(payload[2], payload[3]);
+          int rawPitch = _toSigned16(payload[2], payload[3]);
           int roll = _toSigned16(payload[4], payload[5]);
 
           final attitudeData = {
             'yaw': yaw / 10.0,
-            'pitch': pitch / 10.0,
+            'pitch': getNormalizedPitch(rawPitch / 10.0),
             'roll': roll / 10.0,
           };
 
           gimbalAttitude.value = attitudeData;
-          debugPrint("got att");
+          // debugPrint("got att");
 
           return SiyiCamResponse(cmdId: cmdId, data: attitudeData);
         }
@@ -120,7 +122,7 @@ class SiyiCamParser {
           double distanceInMeters = rawValue / 10.0;
 
           lrfDistance.value = distanceInMeters;
-          debugPrint("got dist");
+          // debugPrint("got dist");
 
           return SiyiCamResponse(
             cmdId: cmdId,
@@ -172,6 +174,14 @@ class SiyiCamParser {
     int major = (verInt >> 16) & 0xFF;
     return "v$major.$minor.$patch";
     // return "v$major.$minor.$patch (Hex: 0x${verInt.toRadixString(16).toUpperCase()})";
+  }
+
+  static double getNormalizedPitch(double rawPitch) {
+    if (rawPitch > 0) {
+      return 180.0 - rawPitch;
+    } else {
+      return -180.0 - rawPitch;
+    }
   }
 }
 

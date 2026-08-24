@@ -100,10 +100,11 @@ class SiyiService {
 
     try {
       final targetAddress = InternetAddress(_ip);
-      int sent = _socket!.send(bytes, targetAddress, targetPort);
-      debugPrint(
-        "SiyiService: Terkirim $sent bytes ke $label ($_ip:$targetPort)",
-      );
+      _socket!.send(bytes, targetAddress, targetPort);
+      // int sent = _socket!.send(bytes, targetAddress, targetPort);
+      // debugPrint(
+      //   "SiyiService: Terkirim $sent bytes ke $label ($_ip:$targetPort)",
+      // );
     } catch (e) {
       debugPrint("SiyiService Gagal Kirim ke $label: $e");
     }
@@ -115,11 +116,13 @@ class SiyiService {
     await Future.delayed(const Duration(milliseconds: 500));
 
     streamLrf = true;
+    SiyiService.streamAtt = true;
     sendToCamera(SiyiCmd.reqLaserStatus);
   }
 
   void disableAndStopLaser() async {
     streamLrf = false;
+    SiyiService.streamAtt = false;
     sendToCamera(SiyiCmd.setLaserStatus(false));
     await Future.delayed(const Duration(milliseconds: 500));
     sendToCamera(SiyiCmd.reqLaserStatus);
