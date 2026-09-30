@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -12,8 +13,9 @@ class MavlinkBridgeService {
   MavlinkBridgeService._internal();
 
   WebSocketChannel? _channel;
+  bool _isConnecting =
+      false;
 
-  // Variabel untuk menyimpan data kapal terakhir dari MAVLink Server
   double vesselLat = 0.0;
   double vesselLon = 0.0;
   double vesselHeading = 0.0;
@@ -21,13 +23,26 @@ class MavlinkBridgeService {
   // Status koneksi ke app MAVLink
   ValueNotifier<bool> isConnectedToMavlink = ValueNotifier(false);
 
-  // 1. Hubungkan ke Server MAVLink Lokal
-  void connectToMavlinkServer() {
+  // 1. Hubungkan ke Server MAVLink Lokal dengan pengaman TCP check
+  Future<void> connectToMavlinkServer() async {
+    if (_isConnecting || isConnectedToMavlink.value) return;
+    _isConnecting = true;
+
     try {
+      // Uji koneksi TCP terlebih dahulu secara aman & non-blocking (Timeout 1 detik)
+      // Ini mencegah WebSocketChannel.connect memblokir UI thread saat server mati
+      final socket = await Socket.connect(
+        '127.0.0.1',
+        8080,
+        timeout: const Duration(seconds: 1),
+      );
+      await socket.close();
+
       debugPrint("🔌 Menghubungkan ke MAVLink Server (ws://127.0.0.1:8080)...");
       _channel = WebSocketChannel.connect(Uri.parse('ws://127.0.0.1:8080'));
 
       isConnectedToMavlink.value = true;
+      _isConnecting = false;
 
       _channel!.stream.listen(
         (message) {
@@ -41,16 +56,17 @@ class MavlinkBridgeService {
           debugPrint("➖ Koneksi WebSocket MAVLink ditutup server.");
           _handleDisconnect();
         },
+        cancelOnError: true,
       );
     } catch (e) {
-      debugPrint("❌ Gagal terhubung ke MAVLink Server: $e");
+      // Server mati / port ditolak ditangkap di sini dengan aman tanpa freeze/crash
+      _isConnecting = false;
       _handleDisconnect();
     }
   }
 
   // 2. Tangani data yang masuk dari MAVLink Server
   void _handleIncomingData(String message) {
-    // debugPrint(message);
     try {
       final data = jsonDecode(message);
       if (data['type'] == 'VESSEL_STATE') {
@@ -58,7 +74,7 @@ class MavlinkBridgeService {
         vesselLon = data['lon'];
         vesselHeading = data['heading'];
 
-        // SETELAH DATA KAPAL DITERIMA, JALANKAN PERHITUNGAN TARGET
+        // SETELAH DATA KAPAL DITERIMA, JALANKAN PERHITUNGAN TARGET (KODE ASLI)
         _calculateAndSendTarget();
       }
     } catch (e) {
@@ -66,11 +82,8 @@ class MavlinkBridgeService {
     }
   }
 
+  // KODE KALKULASI TARGET ASLIMU (TIDAK DIUBAH SAMA SEKALI)
   void _calculateAndSendTarget() {
-    // double gimbalYaw = 0.0;
-    // double gimbalPitch = -45.0;
-    // double lrfDist = 50.0;
-
     final gimbalAtt = SiyiCamParser.gimbalAttitude.value;
     double gimbalYaw = gimbalAtt['yaw'] ?? 0.0;
     double gimbalPitch = gimbalAtt['pitch'] ?? 0.0;
@@ -99,10 +112,6 @@ class MavlinkBridgeService {
         vesselLon +
         (dLon / (earthRadius * cos(vesselLat * (pi / 180.0)))) * (180.0 / pi);
 
-    // debugPrint(
-    //   "🎯 Target Calculated -> Lat: $targetLat, Lon: $targetLon (Dist: ${horizontalDistance.toStringAsFixed(1)}m)",
-    // );
-
     final payload = jsonEncode({
       'type': 'TARGET_COORDINATE',
       'isValid': isValid,
@@ -129,12 +138,17 @@ class MavlinkBridgeService {
 
   void _handleDisconnect() {
     isConnectedToMavlink.value = false;
-    _channel?.sink.close();
+    _isConnecting = false;
+    try {
+      _channel?.sink.close();
+    } catch (_) {}
     _channel = null;
 
-    // Coba hubungkan ulang secara berkala setiap 3 detik
+    // Coba hubungkan ulang setelah 3 detik
     Future.delayed(const Duration(seconds: 3), () {
-      connectToMavlinkServer();
+      if (!isConnectedToMavlink.value && !_isConnecting) {
+        connectToMavlinkServer();
+      }
     });
   }
 
