@@ -136,13 +136,13 @@ class MavlinkBridgeService {
   void _sendCamState() {
     final manager = CameraManager.instance;
     bool cam1Connected =
-        manager.get(CameraId.front).status == CameraState.playing;
+        manager.get(CameraId.front).status.value.state == CameraState.playing;
     bool cam2Connected =
-        manager.get(CameraId.left).status == CameraState.playing;
+        manager.get(CameraId.left).status.value.state == CameraState.playing;
     bool cam3Connected =
-        manager.get(CameraId.rear).status == CameraState.playing;
+        manager.get(CameraId.rear).status.value.state == CameraState.playing;
     bool cam4Connected =
-        manager.get(CameraId.right).status == CameraState.playing;
+        manager.get(CameraId.right).status.value.state == CameraState.playing;
 
     final payload = jsonEncode({
       'type': 'CAM_STATUS',
