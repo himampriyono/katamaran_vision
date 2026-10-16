@@ -142,6 +142,7 @@ class CameraOverlay extends StatelessWidget {
             height: 8,
             decoration: BoxDecoration(
               color: _statusColor(status.state),
+              // color: Colors.green.shade600,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: Colors.black)],
             ),
@@ -152,6 +153,7 @@ class CameraOverlay extends StatelessWidget {
           Expanded(
             child: Text(
               _statusText(status.state),
+              // "Connected",
               style: TextStyle(
                 color: Colors.grey.shade300,
                 fontSize: 11,

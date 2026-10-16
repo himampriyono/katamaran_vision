@@ -4,6 +4,10 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../enums/camera_id.dart';
+import '../enums/camera_state.dart';
+import '../models/camera_status.dart';
+import 'camera_manager.dart';
 import 'parser_cam.dart';
 import 'siyi_service.dart';
 
@@ -13,8 +17,7 @@ class MavlinkBridgeService {
   MavlinkBridgeService._internal();
 
   WebSocketChannel? _channel;
-  bool _isConnecting =
-      false;
+  bool _isConnecting = false;
 
   double vesselLat = 0.0;
   double vesselLon = 0.0;
@@ -74,8 +77,10 @@ class MavlinkBridgeService {
         vesselLon = data['lon'];
         vesselHeading = data['heading'];
 
-        // SETELAH DATA KAPAL DITERIMA, JALANKAN PERHITUNGAN TARGET (KODE ASLI)
         _calculateAndSendTarget();
+      } else if (data['type'] == 'REQ_CAM_STATUS') {
+        debugPrint("Got cam state req");
+        _sendCamState();
       }
     } catch (e) {
       debugPrint("⚠️ Gagal parsing data dari MAVLink: $e");
@@ -124,6 +129,28 @@ class MavlinkBridgeService {
       'lat': targetLat,
       'lng': targetLon,
     };
+
+    _channel?.sink.add(payload);
+  }
+
+  void _sendCamState() {
+    final manager = CameraManager.instance;
+    bool cam1Connected =
+        manager.get(CameraId.front).status == CameraState.playing;
+    bool cam2Connected =
+        manager.get(CameraId.left).status == CameraState.playing;
+    bool cam3Connected =
+        manager.get(CameraId.rear).status == CameraState.playing;
+    bool cam4Connected =
+        manager.get(CameraId.right).status == CameraState.playing;
+
+    final payload = jsonEncode({
+      'type': 'CAM_STATUS',
+      'cam1': cam1Connected,
+      'cam2': cam2Connected,
+      'cam3': cam3Connected,
+      'cam4': cam4Connected,
+    });
 
     _channel?.sink.add(payload);
   }

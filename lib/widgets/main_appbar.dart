@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../services/ui_manager.dart';
-
 class MainAppbar extends StatelessWidget implements PreferredSizeWidget {
   const MainAppbar({super.key});
 
@@ -14,9 +12,9 @@ class MainAppbar extends StatelessWidget implements PreferredSizeWidget {
       title: const Row(
         children: [
           SizedBox(
-            width: 22,
-            height: 12,
-            child: Icon(Icons.visibility_outlined, color: Colors.white),
+            width: 48,
+            height: 48,
+            child: Image(image: AssetImage("assets/icon.png")),
           ),
 
           SizedBox(width: 10),
@@ -32,16 +30,6 @@ class MainAppbar extends StatelessWidget implements PreferredSizeWidget {
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                   letterSpacing: 2,
-                ),
-              ),
-
-              Text(
-                "",
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                  color: Colors.white54,
                 ),
               ),
             ],
