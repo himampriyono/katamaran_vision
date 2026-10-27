@@ -115,6 +115,40 @@ class _CameraControlPanelState extends State<CameraControlPanel> {
                               Column(
                                 children: [
                                   ValueListenableBuilder(
+                                    valueListenable: SiyiCamParser.objectPos,
+                                    builder: (context, tSpd, _) {
+                                      bool valid = (tSpd['valid'] ?? 0) == 1;
+                                      double targetSpeed = tSpd['spd'] ?? 0;
+
+                                      return Text(
+                                        valid
+                                            ? "${targetSpeed.toStringAsFixed(1)} mps"
+                                            : "--",
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    "TARGET SPEED ESTIMATE",
+                                    style: TextStyle(
+                                      color: Colors.blueGrey,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(width: 12),
+                              Column(
+                                children: [
+                                  ValueListenableBuilder(
                                     valueListenable: SiyiCamParser.lrfDistance,
                                     builder: (context, dist, _) {
                                       return Text(

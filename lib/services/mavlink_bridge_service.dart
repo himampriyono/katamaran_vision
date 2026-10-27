@@ -23,17 +23,17 @@ class MavlinkBridgeService {
   double vesselLon = 0.0;
   double vesselHeading = 0.0;
 
-  // Status koneksi ke app MAVLink
+  double? _previousTargetLat;
+  double? _previousTargetLon;
+  DateTime? _previousTargetTime;
+
   ValueNotifier<bool> isConnectedToMavlink = ValueNotifier(false);
 
-  // 1. Hubungkan ke Server MAVLink Lokal dengan pengaman TCP check
   Future<void> connectToMavlinkServer() async {
     if (_isConnecting || isConnectedToMavlink.value) return;
     _isConnecting = true;
 
     try {
-      // Uji koneksi TCP terlebih dahulu secara aman & non-blocking (Timeout 1 detik)
-      // Ini mencegah WebSocketChannel.connect memblokir UI thread saat server mati
       final socket = await Socket.connect(
         '127.0.0.1',
         8080,
@@ -117,20 +117,83 @@ class MavlinkBridgeService {
         vesselLon +
         (dLon / (earthRadius * cos(vesselLat * (pi / 180.0)))) * (180.0 / pi);
 
+    final now = DateTime.now();
+    double? speedMps;
+
+    if (isValid) {
+      final prevLat = _previousTargetLat;
+      final prevLon = _previousTargetLon;
+      final prevTime = _previousTargetTime;
+
+      if (prevLat != null && prevLon != null && prevTime != null) {
+        speedMps = _calculateTargetSpeed(
+          previousLat: prevLat,
+          previousLon: prevLon,
+          currentLat: targetLat,
+          currentLon: targetLon,
+          elapsed: now.difference(prevTime),
+        );
+      }
+
+      _previousTargetLat = targetLat;
+      _previousTargetLon = targetLon;
+      _previousTargetTime = now;
+    } else {
+      _previousTargetLat = null;
+      _previousTargetLon = null;
+      _previousTargetTime = null;
+    }
+
+    if (speedMps != null) {
+      debugPrint('Target speed: ${speedMps.toStringAsFixed(1)} m/s');
+    }
+
     final payload = jsonEncode({
       'type': 'TARGET_COORDINATE',
       'isValid': isValid,
       'lat': targetLat,
       'lon': targetLon,
+      'spd': speedMps,
     });
 
     SiyiCamParser.objectPos.value = {
       'valid': isValid ? 1 : 0,
       'lat': targetLat,
       'lng': targetLon,
+      'spd': speedMps ?? 0,
     };
 
     _channel?.sink.add(payload);
+  }
+
+  double _calculateTargetSpeed({
+    required double previousLat,
+    required double previousLon,
+    required double currentLat,
+    required double currentLon,
+    required Duration elapsed,
+  }) {
+    if (elapsed.inMicroseconds <= 0) return 0;
+
+    const double earthRadius =
+        6378137; // (m) r di garis khatulistiwa @2026, asline si embuh
+
+    final lat1 = previousLat * pi / 180;
+    final lat2 = currentLat * pi / 180;
+    final deltaLat = (currentLat - previousLat) * pi / 180;
+    final deltaLon = (currentLon = previousLon) * pi / 180;
+
+    final a =
+        (pow(sin(deltaLat / 2), 2) +
+                cos(lat1) * cos(lat2) * pow(sin(deltaLon / 2), 2))
+            .clamp(0.0, 1.0)
+            .toDouble();
+
+    final angularDistance = 2 * atan2(sqrt(a), sqrt(1 - a));
+    final distance = earthRadius * angularDistance;
+    final elapsedSeconds = elapsed.inMicroseconds / 1000000;
+
+    return distance / elapsedSeconds;
   }
 
   void _sendCamState() {

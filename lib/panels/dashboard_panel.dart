@@ -61,7 +61,10 @@ class _DashboardPanelState extends State<DashboardPanel> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _InfoTile(label: "TARGET TYPE", value: data.targetType),
+                          _InfoTile(
+                            label: "TARGET TYPE",
+                            value: data.targetType,
+                          ),
                           ValueListenableBuilder<bool>(
                             valueListenable: SiyiCamParser.isLrfOn,
                             builder: (context, isLrfActive, _) {
@@ -117,6 +120,37 @@ class _DashboardPanelState extends State<DashboardPanel> {
                                   Text(
                                     valid
                                         ? "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"
+                                        : "--",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          ValueListenableBuilder<Map<String, double>>(
+                            valueListenable: SiyiCamParser.objectPos,
+                            builder: (context, tSpeed, _) {
+                              bool valid = (tSpeed['valid'] ?? 0) == 1;
+                              double targetSpeed = tSpeed['spd'] ?? 0.0;
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "TARGET SPEED ESTIMATE",
+                                    style: TextStyle(
+                                      color: Colors.white38,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    valid
+                                        ? "${targetSpeed.toStringAsFixed(1)} mps"
                                         : "--",
                                     style: TextStyle(
                                       color: Colors.white,

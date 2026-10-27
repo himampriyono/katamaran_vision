@@ -8,7 +8,12 @@ class SiyiCamParser {
   static final ValueNotifier<bool> isLrfOn = ValueNotifier<bool>(false);
   static final ValueNotifier<double> lrfDistance = ValueNotifier<double>(0.0);
   static final ValueNotifier<Map<String, double>> objectPos =
-      ValueNotifier<Map<String, double>>({'valid': 0, 'lat': 0.0, 'lng': 0.0});
+      ValueNotifier<Map<String, double>>({
+        'valid': 0,
+        'lat': 0.0,
+        'lng': 0.0,
+        'spd': 0.0,
+      });
 
   static SiyiCamResponse? parse(Uint8List packet) {
     if (packet.length < 10) return null;
