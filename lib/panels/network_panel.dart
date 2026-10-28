@@ -10,7 +10,23 @@ class NetworkPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const SizedBox(width: 12),
+            const Text(
+              "CAMERA RTSP SETTING",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 18,
+                letterSpacing: 1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: ValueListenableBuilder(
             valueListenable: SettingsManager.instance.cameras,
@@ -31,15 +47,15 @@ class NetworkPanel extends StatelessWidget {
             },
           ),
         ),
-        const SizedBox(height: 8),
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 250,
-            ), // Batasi lebar maksimal
-            child: const ShipIpCard(),
-          ),
-        ),
+        // const SizedBox(height: 8),
+        // Center(
+        //   child: ConstrainedBox(
+        //     constraints: const BoxConstraints(
+        //       maxWidth: 250,
+        //     ), // Batasi lebar maksimal
+        //     child: const ShipIpCard(),
+        //   ),
+        // ),
       ],
     );
   }
@@ -97,7 +113,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
             "${widget.config.name} Camera",
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               letterSpacing: 1,
             ),
@@ -119,7 +135,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
                         autofocus: true,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
                         decoration: const InputDecoration(
                           isDense: true,
@@ -138,7 +154,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.grey.shade300,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
                       ),
               ),
@@ -162,7 +178,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
                   padding: const EdgeInsets.all(2),
                   child: Icon(
                     _isEditing ? Icons.save : Icons.edit,
-                    size: 14,
+                    size: 16,
                     color: _isEditing ? Colors.green : Colors.orangeAccent,
                   ),
                 ),
@@ -188,7 +204,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
                     color: _autoConnect ? Colors.blue : Colors.transparent,
                   ),
                   child: _autoConnect
-                      ? const Icon(Icons.check, size: 9, color: Colors.white)
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
                       : null,
                 ),
 
@@ -196,7 +212,7 @@ class _CameraNetworkCardState extends State<CameraNetworkCard> {
 
                 const Text(
                   "Auto Connect",
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
                 ),
               ],
             ),
@@ -249,7 +265,7 @@ class _ShipIpCardState extends State<ShipIpCard> {
             "Ship IP:",
             style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -268,7 +284,7 @@ class _ShipIpCardState extends State<ShipIpCard> {
                         autofocus: true,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 16,
                         ),
                         decoration: const InputDecoration(
                           isDense: true,
@@ -285,7 +301,7 @@ class _ShipIpCardState extends State<ShipIpCard> {
                         currentIp,
                         style: TextStyle(
                           color: Colors.grey.shade300,
-                          fontSize: 14,
+                          fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
                       );

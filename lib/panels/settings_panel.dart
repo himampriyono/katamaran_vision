@@ -18,7 +18,7 @@ class SettingsPanel extends StatelessWidget {
             "APPLICATION SETTINGS",
             style: TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: 16,
               letterSpacing: 1,
               fontWeight: FontWeight.bold,
             ),
@@ -28,7 +28,7 @@ class SettingsPanel extends StatelessWidget {
           // --- SHIP IP SETTING ---
           const Text(
             "Ship IP Address",
-            style: TextStyle(color: Colors.white, fontSize: 13),
+            style: TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 6),
           ValueListenableBuilder<String>(
@@ -42,7 +42,7 @@ class SettingsPanel extends StatelessWidget {
 
               return TextField(
                 controller: ipController,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
                 decoration: InputDecoration(
                   isDense: true,
                   filled: true,
@@ -76,7 +76,7 @@ class SettingsPanel extends StatelessWidget {
             children: [
               const Text(
                 "Gimbal Pan Sensitivity",
-                style: TextStyle(color: Colors.white, fontSize: 13),
+                style: TextStyle(color: Colors.white, fontSize: 16),
               ),
               ValueListenableBuilder<double>(
                 valueListenable: SettingsManager.instance.panSensitivity,
@@ -85,7 +85,7 @@ class SettingsPanel extends StatelessWidget {
                     sensitivity.toStringAsFixed(1),
                     style: const TextStyle(
                       color: Colors.lightBlueAccent,
-                      fontSize: 13,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   );

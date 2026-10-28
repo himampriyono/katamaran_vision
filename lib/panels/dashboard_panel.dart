@@ -25,15 +25,15 @@ class _DashboardPanelState extends State<DashboardPanel> {
     return Container(
       padding: const EdgeInsets.all(16),
       color: const Color(0xFF1A1F2C),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      child: ListView(
+        // crossAxisAlignment: CrossAxisAlignment.start,
+        // mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
             "TARGET INFORMATION",
             style: TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: 18,
               letterSpacing: 1,
             ),
           ),
@@ -55,119 +55,141 @@ class _DashboardPanelState extends State<DashboardPanel> {
                         : Colors.white10,
                   ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _InfoTile(
-                            label: "TARGET TYPE",
-                            value: data.targetType,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _InfoTile(
+                                label: "STATUS",
+                                value: isTracking ? "LOCKED" : "IDLE",
+                              ),
+
+                              _InfoTile(
+                                label: "TARGET TYPE",
+                                value: data.targetType,
+                              ),
+
+                              ValueListenableBuilder<bool>(
+                                valueListenable: SiyiCamParser.isLrfOn,
+                                builder: (context, isLrfActive, _) {
+                                  return ValueListenableBuilder<double>(
+                                    valueListenable: SiyiCamParser.lrfDistance,
+                                    builder: (context, distance, _) {
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "LRF DIST",
+                                            style: TextStyle(
+                                              color: Colors.white38,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            isLrfActive
+                                                ? "${distance.toStringAsFixed(1)} m"
+                                                : "--",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                          ValueListenableBuilder<bool>(
-                            valueListenable: SiyiCamParser.isLrfOn,
-                            builder: (context, isLrfActive, _) {
-                              return ValueListenableBuilder<double>(
-                                valueListenable: SiyiCamParser.lrfDistance,
-                                builder: (context, distance, _) {
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Divider(height: 0.2),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              ValueListenableBuilder<Map<String, double>>(
+                                valueListenable: SiyiCamParser.objectPos,
+                                builder: (context, objPos, _) {
+                                  bool valid = (objPos['valid'] ?? 0) == 1;
+                                  double lat = objPos['lat'] ?? 0.000000;
+                                  double lng = objPos['lng'] ?? 0.000000;
+
                                   return Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        "LRF DIST",
+                                        "TARGET LOCATION ESTIMATE",
                                         style: TextStyle(
                                           color: Colors.white38,
-                                          fontSize: 10,
+                                          fontSize: 16,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      const SizedBox(height: 4),
                                       Text(
-                                        isLrfActive
-                                            ? "${distance.toStringAsFixed(1)} m"
+                                        valid
+                                            ? "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"
                                             : "--",
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 14,
+                                          fontSize: 16,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   );
                                 },
-                              );
-                            },
-                          ),
-                          ValueListenableBuilder<Map<String, double>>(
-                            valueListenable: SiyiCamParser.objectPos,
-                            builder: (context, objPos, _) {
-                              bool valid = (objPos['valid'] ?? 0) == 1;
-                              double lat = objPos['lat'] ?? 0.000000;
-                              double lng = objPos['lng'] ?? 0.000000;
+                              ),
+                              ValueListenableBuilder<Map<String, double>>(
+                                valueListenable: SiyiCamParser.objectPos,
+                                builder: (context, tSpeed, _) {
+                                  bool valid = (tSpeed['valid'] ?? 0) == 1;
+                                  double targetSpeed = tSpeed['spd'] ?? 0.0;
 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    "TARGET LOCATION ESTIMATE",
-                                    style: TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    valid
-                                        ? "${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}"
-                                        : "--",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "TARGET SPEED ESTIMATE",
+                                        style: TextStyle(
+                                          color: Colors.white38,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        valid
+                                            ? "${targetSpeed.toStringAsFixed(1)} mps"
+                                            : "--",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                          ValueListenableBuilder<Map<String, double>>(
-                            valueListenable: SiyiCamParser.objectPos,
-                            builder: (context, tSpeed, _) {
-                              bool valid = (tSpeed['valid'] ?? 0) == 1;
-                              double targetSpeed = tSpeed['spd'] ?? 0.0;
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    "TARGET SPEED ESTIMATE",
-                                    style: TextStyle(
-                                      color: Colors.white38,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    valid
-                                        ? "${targetSpeed.toStringAsFixed(1)} mps"
-                                        : "--",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          _InfoTile(
-                            label: "STATUS",
-                            value: isTracking ? "LOCKED" : "IDLE",
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -179,7 +201,7 @@ class _DashboardPanelState extends State<DashboardPanel> {
             "CAMERA CONTROL",
             style: TextStyle(
               color: Colors.white70,
-              fontSize: 12,
+              fontSize: 18,
               letterSpacing: 1,
             ),
           ),
@@ -194,7 +216,7 @@ class _DashboardPanelState extends State<DashboardPanel> {
                     "Zoom: ${zoomVal.toStringAsFixed(1)}X",
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 14,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   );
@@ -384,7 +406,7 @@ class _ControlInkButton extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: color,
-                  fontSize: 12,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -403,12 +425,12 @@ class _InfoTile extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+      Text(label, style: const TextStyle(color: Colors.white38, fontSize: 16)),
       Text(
         value,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 14,
+          fontSize: 16,
           fontWeight: FontWeight.bold,
         ),
       ),

@@ -111,12 +111,13 @@ class _RecordRowState extends State<_RecordRow> {
           child: Row(
             children: [
               SizedBox(
-                width: 84,
+                width: 100,
                 child: Text(
                   widget.session.config.name.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 16
                   ),
                 ),
               ),
@@ -125,14 +126,14 @@ class _RecordRowState extends State<_RecordRow> {
                   isRec ? "Recording..." : "Idle",
                   style: TextStyle(
                     color: isRec ? Colors.red : Colors.grey.shade400,
-                    fontSize: 12,
+                    fontSize: 16,
                   ),
                 ),
               ),
               Expanded(
                 child: Text(
                   isRec ? _durationText : "---",
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
               InkWell(
@@ -149,7 +150,7 @@ class _RecordRowState extends State<_RecordRow> {
                     horizontal: 10,
                     vertical: 4,
                   ),
-                  width: 84,
+                  width: 100,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     border: Border.all(
@@ -174,7 +175,7 @@ class _RecordRowState extends State<_RecordRow> {
                         isRec ? "STOP" : "START",
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -221,7 +222,7 @@ Widget _buildAIOControl() {
                   horizontal: 10,
                   vertical: 4,
                 ),
-                width: 120,
+                width: 160,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   border: Border.all(
@@ -244,7 +245,7 @@ Widget _buildAIOControl() {
                       isRec ? "STOP ALL" : "START ALL",
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 12,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

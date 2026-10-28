@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import '../enums/camera_id.dart';
-import '../enums/camera_state.dart';
 import '../services/camera_manager.dart';
 import '../services/camera_session.dart';
 import '../services/parser_ai.dart';
