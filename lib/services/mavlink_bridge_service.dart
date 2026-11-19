@@ -181,7 +181,7 @@ class MavlinkBridgeService {
     final lat1 = previousLat * pi / 180;
     final lat2 = currentLat * pi / 180;
     final deltaLat = (currentLat - previousLat) * pi / 180;
-    final deltaLon = (currentLon = previousLon) * pi / 180;
+    final deltaLon = (currentLon - previousLon) * pi / 180;
 
     final a =
         (pow(sin(deltaLat / 2), 2) +

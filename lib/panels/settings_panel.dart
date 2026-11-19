@@ -34,7 +34,6 @@ class SettingsPanel extends StatelessWidget {
           ValueListenableBuilder<String>(
             valueListenable: SettingsManager.instance.shipIp,
             builder: (context, ip, _) {
-              // Kita buat controller lokal atau text field sederhana
               final ipController = TextEditingController(text: ip);
               ipController.selection = TextSelection.fromPosition(
                 TextPosition(offset: ipController.text.length),
