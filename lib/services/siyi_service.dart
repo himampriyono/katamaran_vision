@@ -128,6 +128,11 @@ class SiyiService {
     sendToCamera(SiyiCmd.reqLaserStatus);
   }
 
+  void setGimbalMode(int mode) {
+    sendToCamera(SiyiCmd.setGimbalMode(mode));
+    debugPrint('SIYI Gimbal Mode: $mode');
+  }
+
   void initMasterPolling() {
     if (_masterTimer != null && _masterTimer!.isActive) return;
 

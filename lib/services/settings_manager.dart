@@ -5,6 +5,7 @@ import '../enums/camera_id.dart';
 import '../extensions/camera_id_extension.dart';
 import '../models/camera_config.dart';
 import 'mediamtx_service.dart';
+import '../enums/gimbal_working_mode.dart';
 
 class SettingsManager {
   SettingsManager._();
@@ -16,6 +17,8 @@ class SettingsManager {
 
   final ValueNotifier<String> shipIp = ValueNotifier<String>("192.168.137.78");
   final ValueNotifier<double> panSensitivity = ValueNotifier<double>(5.0);
+  final ValueNotifier<GimbalWorkingMode> gimbalMode =
+      ValueNotifier<GimbalWorkingMode>(GimbalWorkingMode.follow);
 
   late SharedPreferences _prefs;
 
@@ -37,6 +40,13 @@ class SettingsManager {
       await _prefs.setDouble("pan_sensitivity", 5.0);
     }
     panSensitivity.value = _prefs.getDouble("pan_sensitivity") ?? 5.0;
+
+    final savedMode = _prefs.getString('gimbal_mode') ?? 'follow';
+
+    gimbalMode.value = GimbalWorkingMode.values.firstWhere(
+      (mode) => mode.name == savedMode,
+      orElse: () => GimbalWorkingMode.follow,
+    );
   }
 
   String getShipIp() {
@@ -102,6 +112,11 @@ class SettingsManager {
     await _prefs.setString("camera_${config.id.key}_rtsp", config.rtspUrl);
 
     await _prefs.setBool("camera_${config.id.key}_auto", config.autoConnect);
+  }
+
+  Future<void> saveGimbalMode(GimbalWorkingMode mode) async {
+    gimbalMode.value = mode;
+    await _prefs.setString('gimbal_mode', mode.name);
   }
 
   CameraConfig _defaultCamera(CameraId id) {

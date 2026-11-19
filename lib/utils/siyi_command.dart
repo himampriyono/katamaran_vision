@@ -82,7 +82,8 @@ class SiyiCmd {
 
   static Uint8List reqLaserRange = format(0x15);
 
-  static Uint8List streamData(int dataType, int freq) => format(0x25, [dataType, freq]);
+  static Uint8List streamData(int dataType, int freq) =>
+      format(0x25, [dataType, freq]);
 
   // Format SD Card 0x48
   static Uint8List cmdFormatSDCard = format(0x48);
@@ -125,6 +126,15 @@ class SiyiCmd {
   // Set Coordinate Information Flow State 0x09 (toggle: 1 = Open, 0 = Close)
   static Uint8List setAiCoordFlowState(int toggle) {
     return format(0x09, [toggle]);
+  }
+
+  // Set Gimbal Motion Mode (CMD ID 0x0C)
+  static Uint8List setGimbalMode(int mode) {
+    if (mode < 0 || mode > 2) {
+      throw ArgumentError('Invalid gimbal mode');
+    }
+
+    return format(0x0C, [mode + 3]);
   }
 
   // ===================== Core Formatter & CRC16 ================================

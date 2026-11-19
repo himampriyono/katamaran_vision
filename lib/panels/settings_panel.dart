@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/settings_manager.dart'; // Sesuaikan path import dengan project kamu
+import '../enums/gimbal_working_mode.dart';
+import '../services/siyi_service.dart';
 
 class SettingsPanel extends StatelessWidget {
   const SettingsPanel({super.key});
@@ -106,6 +108,52 @@ class SettingsPanel extends StatelessWidget {
                 onChanged: (newValue) {
                   SettingsManager.instance.savePanSensitivity(newValue);
                 },
+              );
+            },
+          ),
+
+          const SizedBox(height: 20),
+
+          const Text(
+            "Gimbal Working Mode",
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+
+          ValueListenableBuilder<GimbalWorkingMode>(
+            valueListenable: SettingsManager.instance.gimbalMode,
+            builder: (context, mode, _) {
+              return SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<GimbalWorkingMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: GimbalWorkingMode.lock,
+                      label: Text('LOCK'),
+                    ),
+                    ButtonSegment(
+                      value: GimbalWorkingMode.follow,
+                      label: Text('FOLLOW'),
+                    ),
+                    ButtonSegment(
+                      value: GimbalWorkingMode.fpv,
+                      label: Text('FPV'),
+                    ),
+                  ],
+                  selected: {mode},
+                  onSelectionChanged: (selection) async {
+                    final newMode = selection.first;
+
+                    await SettingsManager.instance.saveGimbalMode(newMode);
+
+                    SiyiService().setGimbalMode(newMode.commandValue - 3);
+                  },
+                  style: SegmentedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    selectedForegroundColor: Colors.white,
+                    selectedBackgroundColor: Colors.blueAccent,
+                  ),
+                ),
               );
             },
           ),
